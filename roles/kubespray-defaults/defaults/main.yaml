@@ -12,9 +12,11 @@ kube_api_anonymous_auth: false
 # Default value, but will be set to true automatically if detected
 is_atomic: false
 
+# optional disable the swap
+disable_swap: false
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.10.2
+kube_version: v1.10.4
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: iptables
@@ -210,7 +212,7 @@ authorization_modes: ['Node', 'RBAC']
 rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
 
 # When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet’s HTTPS endpoint
-kubelet_authentication_token_webhook: false
+kubelet_authentication_token_webhook: true
 
 # When enabled, access to the kubelet API requires authorization by delegation to the API server
 kubelet_authorization_mode_webhook: false
@@ -277,6 +279,18 @@ proxy_env:
   https_proxy: "{{ https_proxy| default ('') }}"
   no_proxy: "{{ no_proxy| default ('') }}"
 
+ssl_ca_dirs: >-
+  [
+  {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] -%}
+  '/usr/share/ca-certificates',
+  {% elif ansible_os_family == 'RedHat' -%}
+  '/etc/pki/tls',
+  '/etc/pki/ca-trust',
+  {% elif ansible_os_family == 'Debian' -%}
+  '/usr/share/ca-certificates',
+  {% endif -%}
+  ]
+
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"
 kube_apiserver_count: "{{ groups['kube-master'] | length }}"
@@ -314,12 +328,13 @@ kube_apiserver_client_key: |-
   {%- endif %}
 
 # Set to true to deploy etcd-events cluster
-etcd_events_cluster_setup: false
+etcd_events_cluster_enabled: false
 
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
 etcd_access_address: "{{ access_ip | default(etcd_address) }}"
+etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
 etcd_client_url: "https://{{ etcd_access_address }}:2379"
 etcd_events_peer_url: "https://{{ etcd_access_address }}:2382"
